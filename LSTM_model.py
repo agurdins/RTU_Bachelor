@@ -31,23 +31,17 @@ if DEVICE == 'cuda':
 PATH_DATA = '../data'
 os.makedirs('./results', exist_ok=True)
 os.makedirs(PATH_DATA, exist_ok=True)
-
+PATH_DATASET = './RTU_Bachelor'
 
 class DatasetCustom(torch.utils.data.Dataset):
     def __init__(self):
-        # sagatavo pre-procesing laika un ielade sheit ar json.load(fp)
+        with open(f'{PATH_DATASET}/metadata.json') as fp:
+            metadata = json.load(fp)
         self.metadata = {
-            'shape': (909, 16000, 88),
-            'y': [ # 909
-                88,
-                77,
-                66,
-                72
-            ],
-            'lengths': [ # 909
-                11000,
-                6000,
-            ]
+            'shape': metadata[:][1],
+            'y': metadata[:][0],
+            'lengths': metadata[:][3],
+            'BPM': metadata[:][2]
         }
         self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=self.metadata['shape'])
 
