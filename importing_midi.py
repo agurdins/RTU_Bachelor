@@ -1,12 +1,5 @@
 import string
-import matplotlib.pyplot as plt
-import mido as m
 import numpy as np
-
-midi_001 = m.MidiFile('POP909-Dataset-master/POP909/001/001.mid', clip=True)
-print(midi_001.tracks)
-for m in midi_001.tracks[1][:10]: #Testing purposes
-    print(m)
 
 
 # The function msg2dict extracts important information (note, velocity, time, on or off) from each message.
@@ -34,7 +27,7 @@ def switch_note(last_state, note, velocity, on_=True):
     # piano has 88 notes, corresponding to note id 21 to 108, any note out of this range will be ignored
     result = [0] * 88 if last_state is None else last_state.copy()
     if 21 <= note <= 108:
-        result[note-21] = velocity if on_ else 0
+        result[note - 21] = velocity if on_ else 0
     return result
 
 
@@ -42,16 +35,19 @@ def switch_note(last_state, note, velocity, on_=True):
 # list in order.
 def get_new_state(new_msg, last_state):
     new_msg, on_ = msg2dict(str(new_msg))
-    new_state = switch_note(last_state, note=new_msg['note'], velocity=new_msg['velocity'], on_=on_) if on_ is not None else last_state
+    new_state = switch_note(last_state, note=new_msg['note'], velocity=new_msg['velocity'],
+                            on_=on_) if on_ is not None else last_state
     return [new_state, new_msg['time']]
+
+
 def track2seq(track):
     # piano has 88 notes, corresponding to note id 21 to 108, any note out of the id range will be ignored
     result = []
-    last_state, last_time = get_new_state(str(track[0]), [0]*88)
+    last_state, last_time = get_new_state(str(track[0]), [0] * 88)
     for i in range(1, len(track)):
         new_state, new_time = get_new_state(track[i], last_state)
         if new_time > 0:
-            result += [last_state]*new_time
+            result += [last_state] * new_time
         last_state, last_time = new_state, new_time
     return result
 
@@ -81,8 +77,14 @@ def mid2arry(mid, min_msg_pct=0.1):
     return all_arys[min(ends): max(ends)]
 
 
-result_array = mid2arry(midi_001)
+# Getting raw tempo from Midi file
+def get_tempo(midi_file):
+    for msg in midi_file:  # Search for tempo
+        if msg.type == 'set_tempo':
+            return msg.tempo
+    return 500000  # If not found return default tempo
 
-plt.plot(range(result_array.shape[0]), np.multiply(np.where(result_array>0, 1, 0), range(1, 89)), marker='.', markersize=1, linestyle='')
-plt.title("001.mid")
-plt.show()
+# print("success")
+# plt.plot(range(result_array.shape[0]), np.multiply(np.where(result_array>0, 1, 0), range(1, 89)), marker='.', markersize=1, linestyle='')
+# plt.title("001.mid")
+# plt.show()
