@@ -5,11 +5,11 @@ import json
 
 with open('midi_shapes.json', 'r') as midiJ:
     json_data = json.load(midiJ)
-idx, max_value, row = max(json_data, key=lambda item: item[1])
 
-shape = (908, max_value, 88)
+
+shape = json_data['shape']
 midi_memmap = "POP909-Dataset-master/POP909/memmap.dat"
-fpath = np.memmap(midi_memmap, dtype='float32', mode='w+', shape=shape)
+fpath = np.memmap(midi_memmap, dtype='float32', mode='w+', shape=json_data['shape'])
 
 for num in range(1, 910):
     midi_file = m.MidiFile(f"POP909-Dataset-master/POP909/{num:03d}/{num:03d}.mid", clip=True)

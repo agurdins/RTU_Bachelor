@@ -36,13 +36,7 @@ PATH_DATASET = './RTU_Bachelor'
 class DatasetCustom(torch.utils.data.Dataset):
     def __init__(self):
         with open(f'{PATH_DATASET}/metadata.json') as fp:
-            metadata = json.load(fp)
-        self.metadata = {
-            'shape': metadata[:][1],
-            'y': metadata[:][0],
-            'lengths': metadata[:][3],
-            'BPM': metadata[:][2]
-        }
+            self.metadata = json.load(fp)
         self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=self.metadata['shape'])
 
     def __len__(self):
@@ -75,12 +69,14 @@ data_loader_test = torch.utils.data.DataLoader(
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
+        self.input_size = dataset_full.metadata.shape[-1] # 88
 
         # TODO partaisit par Sequential un pielikt normalizations
         self.fc_first = torch.nn.Sequential(
-            torch.nn.Linear(88, RNN_HIDDEN_SIZE),
-            torch.nn.ReLU(),
-            torch.nn.AdaptiveAvgPool1d(RNN_HIDDEN_SIZE)
+            torch.nn.Linear(self.input_size, RNN_HIDDEN_SIZE),
+            torch.nn.BatchNorm1d(self.input_size),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(RNN_HIDDEN_SIZE, RNN_HIDDEN_SIZE),
         )
 
         self.rnn = torch.nn.LSTM(
@@ -91,9 +87,10 @@ class Model(torch.nn.Module):
 
         # TODO partaisit par Sequential un pielikt normalizations
         self.fc_last = torch.nn.Sequential(
-            torch.nn.Linear(RNN_HIDDEN_SIZE, 1),
-            torch.nn.ReLU(),
-            torch.nn.AdaptiveAvgPool1d(1)
+            torch.nn.Linear(RNN_HIDDEN_SIZE, out_features=RNN_HIDDEN_SIZE),
+            torch.nn.BatchNorm1d(RNN_HIDDEN_SIZE),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(RNN_HIDDEN_SIZE, out_features=1)
         )
 
 
@@ -123,6 +120,7 @@ class Model(torch.nn.Module):
         y_prim = self.fc_last.forward(x_temp_pooling_tensor)
 
         y_prim = torch.relu(y_prim) # jo nevar bpm nevar but negativs
+        y_prim = y_prim.squeeze() # (B, 1) => (B, )
 
         return y_prim
 
@@ -182,18 +180,6 @@ for epoch in range(1, EPOCHS+1):
         torch.save(model.cpu().state_dict(), f'./results/model-{epoch}.pt')
         model = model.to(DEVICE)
 
-    print('Examples:')
-    y_prim_unpacked, lengths_unpacked = pad_packed_sequence(y_prim_packed.cpu(), batch_first=True)
-    y_prim_unpacked = y_prim_unpacked[:5] # 5 examples
-    for idx, each in enumerate(y_prim_unpacked):
-        length = lengths_unpacked[idx]
-
-        y_prim_idxes = np.argmax(each[:length].data.numpy(), axis=1).tolist()
-        x_idxes = np.argmax(x[idx, :length].cpu().data.numpy(), axis=1).tolist()
-        y_prim_idxes = [x_idxes[0]] + y_prim_idxes
-        print('x     : ' +' '.join([dataset_full.idxes_to_words[it] for it in x_idxes]))
-        print('y_prim: ' +' '.join([dataset_full.idxes_to_words[it] for it in y_prim_idxes]))
-        print('')
 
     plt.figure(figsize=(12,5))
     plts = []
