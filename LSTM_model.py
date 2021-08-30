@@ -19,14 +19,14 @@ RNN_DROPOUT = 0.3
 run_path = ''
 
 DEVICE = 'cpu'
-if torch.cuda.is_available():
-    DEVICE = 'cuda'
+# if torch.cuda.is_available():
+#     DEVICE = 'cuda'
 
 MIN_SENTENCE_LEN = 3
 MAX_SENTENCE_LEN = 20
 MAX_LEN = 200 # limit max number of samples otherwise too slow training (on GPU use all samples / for final training)
-if DEVICE == 'cuda':
-    MAX_LEN = None
+# if DEVICE == 'cuda':
+#     MAX_LEN = None
 
 PATH_DATA = '../data'
 os.makedirs('./results', exist_ok=True)
@@ -37,7 +37,8 @@ class DatasetCustom(torch.utils.data.Dataset):
     def __init__(self):
         with open(f'{PATH_DATASET}/midi_json.json') as fp:
             self.metadata = json.load(fp)
-        self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=self.metadata['shape'])
+        shape = tuple(self.metadata['shape'])
+        self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=shape)
 
     def __len__(self):
         return len(self.mmap)
@@ -69,9 +70,8 @@ data_loader_test = torch.utils.data.DataLoader(
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.input_size = dataset_full.metadata.shape[-1] # 88
+        self.input_size = dataset_full.metadata['shape'][-1] # 88
 
-        # TODO partaisit par Sequential un pielikt normalizations
         self.fc_first = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, RNN_HIDDEN_SIZE),
             torch.nn.BatchNorm1d(self.input_size),
@@ -85,14 +85,12 @@ class Model(torch.nn.Module):
             batch_first=True,
         )
 
-        # TODO partaisit par Sequential un pielikt normalizations
         self.fc_last = torch.nn.Sequential(
             torch.nn.Linear(RNN_HIDDEN_SIZE, out_features=RNN_HIDDEN_SIZE),
             torch.nn.BatchNorm1d(RNN_HIDDEN_SIZE),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(RNN_HIDDEN_SIZE, out_features=1)
         )
-
 
     def forward(self, x: PackedSequence, lengths):
 
@@ -127,6 +125,8 @@ class Model(torch.nn.Module):
 model = Model()
 model = model.to(DEVICE)
 optimizer = torch.optim.RMSprop(model.parameters(), lr=1e-4)
+
+print(DEVICE)
 
 metrics = {}
 best_test_loss = float('Inf')
