@@ -8,11 +8,11 @@ from torch.nn.utils.rnn import pad_packed_sequence, PackedSequence, pack_padded_
 from torch.hub import download_url_to_file
 import torch.utils.data
 
-BATCH_SIZE = 128
+BATCH_SIZE = 2
 EPOCHS = 100
 LEARNING_RATE = 1e-4
 
-RNN_HIDDEN_SIZE = 256
+RNN_HIDDEN_SIZE = 16
 RNN_LAYERS = 2
 RNN_DROPOUT = 0.3
 
@@ -41,12 +41,13 @@ class DatasetCustom(torch.utils.data.Dataset):
         self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=shape)
 
     def __len__(self):
-        return len(self.mmap)
+        return 4
+        # return len(self.mmap)
 
     def __getitem__(self, idx):
-        x = torch.FloatTensor(self.mmap[idx])
-        y = torch.FloatTensor(self.metadata['y'][idx])
-        length = torch.LongTensor(self.metadata['lengths'][idx])
+        x = torch.FloatTensor(np.array(self.mmap[idx]))
+        y = torch.FloatTensor([self.metadata['y'][idx]])
+        length = torch.LongTensor([self.metadata['lengths'][idx]])
         return x, y, length
 
 
@@ -79,7 +80,7 @@ class Model(torch.nn.Module):
             torch.nn.Linear(RNN_HIDDEN_SIZE, RNN_HIDDEN_SIZE),
         )
 
-        self.rnn = torch.nn.LSTM(
+        self.rnn = torch.nn.RNN(
             input_size=RNN_HIDDEN_SIZE,
             hidden_size=RNN_HIDDEN_SIZE,
             batch_first=True,
@@ -117,7 +118,7 @@ class Model(torch.nn.Module):
         x_temp_pooling_tensor = torch.stack(x_temp_pooling) # (B, hidden)
         y_prim = self.fc_last.forward(x_temp_pooling_tensor)
 
-        y_prim = torch.relu(y_prim) # jo nevar bpm nevar but negativs
+        y_prim = torch.relu(y_prim) # jo bpm nevar but negativs
         y_prim = y_prim.squeeze() # (B, 1) => (B, )
 
         return y_prim
@@ -150,12 +151,12 @@ for epoch in range(1, EPOCHS+1):
         for x, y, lengths in data_loader:
 
             x = x.to(DEVICE)
-            y = y.to(DEVICE)
-            lengths = lengths.to(DEVICE)
+            y = y.to(DEVICE).squeeze()
+            lengths = lengths.to(DEVICE).squeeze()
 
             x_packed = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
 
-            y_prim = model.forward(x_packed)
+            y_prim = model.forward(x_packed, lengths)
 
             loss = torch.mean(torch.abs(y - y_prim))
 
