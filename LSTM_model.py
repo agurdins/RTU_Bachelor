@@ -35,10 +35,10 @@ PATH_DATASET = './'
 
 class DatasetCustom(torch.utils.data.Dataset):
     def __init__(self):
-        with open(f'{PATH_DATASET}/midi_json.json') as fp:
+        with open(f'{PATH_DATASET}/midi_json_mini.json') as fp:
             self.metadata = json.load(fp)
         shape = tuple(self.metadata['shape'])
-        self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap.dat', mode='r', shape=shape)
+        self.mmap = np.memmap('POP909-Dataset-master/POP909/memmap_mini.dat', mode='r', shape=shape)
 
     def __len__(self):
         return 4
@@ -75,7 +75,7 @@ class Model(torch.nn.Module):
 
         self.fc_first = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, RNN_HIDDEN_SIZE),
-            torch.nn.BatchNorm1d(self.input_size),
+            torch.nn.BatchNorm1d(RNN_HIDDEN_SIZE),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(RNN_HIDDEN_SIZE, RNN_HIDDEN_SIZE),
         )
@@ -95,15 +95,16 @@ class Model(torch.nn.Module):
 
     def forward(self, x: PackedSequence, lengths):
 
+        x_proj_internal = self.fc_first.forward(x.data)
         x_proj = PackedSequence(
-            data=self.fc_first.forward(x.data.argmax(dim=1)),
+            data=x_proj_internal,
             batch_sizes=x.batch_sizes,
             sorted_indices=x.sorted_indices
         )
         x_rnn, _ = self.rnn.forward(x_proj)
 
         # x_rnn.shape = (B, seq, hidden)
-        x_rnn_padded = pad_packed_sequence(x_rnn, batch_first=True)
+        x_rnn_padded, _ = pad_packed_sequence(x_rnn, batch_first=True)
         # x_rnn_padded.shape = (B, max_seq, hidden) Tensor
 
         x_temp_pooling = []
