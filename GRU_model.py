@@ -25,7 +25,7 @@ DEVICE = 'cpu'
 MAX_SAMPLE_LEN = 1000
 
 PATH_DATA = '../data'
-os.makedirs('./results/LSTM_model', exist_ok=True)
+os.makedirs('./results/GRU_model', exist_ok=True)
 os.makedirs(PATH_DATA, exist_ok=True)
 PATH_DATASET = './'
 
@@ -81,7 +81,7 @@ class Model(torch.nn.Module):
             torch.nn.Linear(RNN_HIDDEN_SIZE, RNN_HIDDEN_SIZE),
         )
 
-        self.rnn = torch.nn.LSTM(
+        self.rnn = torch.nn.GRU(
             input_size=RNN_HIDDEN_SIZE,
             hidden_size=RNN_HIDDEN_SIZE,
             num_layers=RNN_LAYERS,
@@ -181,12 +181,12 @@ for epoch in range(1, EPOCHS+1):
 
     if best_test_loss > loss.item():
         best_test_loss = loss.item()
-        torch.save(model.cpu().state_dict(), f'./results/LSTM_model/model-{epoch}.pt')
+        torch.save(model.cpu().state_dict(), f'./results/GRU_model/model-{epoch}.pt')
         model = model.to(DEVICE)
 
 
     plt.figure(figsize=(12,5))
-    plt.title('LSTM modelis')
+    plt.title('GRU modelis')
     plts = []
     c = 0
     for key, value in metrics.items():
@@ -199,5 +199,5 @@ for epoch in range(1, EPOCHS+1):
         c += 1
 
     plt.legend(plts, [it.get_label() for it in plts])
-    plt.savefig(f'./results/LSTM_model/epoch-{epoch}.png')
+    plt.savefig(f'./results/GRU_model/epoch-{epoch}.png')
     plt.show()

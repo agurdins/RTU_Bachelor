@@ -6,7 +6,7 @@ import importing_midi as midi
 y = []
 lengths = []
 
-for num in range(1, 10):
+for num in range(1, 51):
     midi_file = m.MidiFile(f"POP909-Dataset-master/POP909/{num:03d}/{num:03d}.mid", clip=True)
     result_array = midi.mid2arry(midi_file)
     print(f'{num:03d}') #testing purposes
@@ -17,7 +17,7 @@ for num in range(1, 10):
     else:
         lengths.append(result_array.shape[0])
 
-with open('midi_json_mini.json', 'w+') as jsonFile:
+with open('midi_json_mini_50.json', 'w+') as jsonFile:
     json.dump({
         'shape': (len(lengths), max(lengths), 88), # mmap shape must be like this - Evalds
         'y': y, # BPM scalar vertibas
